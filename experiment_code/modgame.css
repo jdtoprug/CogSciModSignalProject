@@ -1,0 +1,109 @@
+.modGameButton {
+	position:absolute;
+	list-style:none;
+	padding: 10px;
+	width: 50px;
+	background-color:#55ff55;
+	border:1px solid black;
+	border-radius: 10px;
+	text-align:center;
+	text-indent: -3px;
+	font-size:17px;
+	height:8px;
+	line-height:10px;
+	width:12px;
+	text-decoration:none;
+	cursor: pointer;
+}
+
+.modGameButton:hover {
+  background-color: #8ce9ff;
+}
+
+.selected {
+  background-color: #8ce9ff;
+}
+
+.center_circle{
+  position: absolute;
+  margin: auto;
+  text-align: center;
+  top: 400px;
+  right: 530px;
+  font-size: 1.25em;
+  color: black;
+  font-weight: normal;
+
+}
+h3{
+  text-align: center;
+}
+
+p{
+  text-align: center; /* was left */
+}
+
+input[type="button"] {
+    position: absolute;
+    left: 70%;
+    width: 120px;
+    margin-left: 35px;
+    background-color:white;
+
+}
+
+.round{
+  /*background-color: blue; */
+  top: 2.5%;
+  position: absolute;
+  left: 42.5%; /* was 45% */
+  text-align: center;
+  font-size: 2em;
+}
+    
+.scores{
+  /*background-color: red; */
+  position: absolute;
+  text-align: center;
+  top: 10%;
+  left:44.6%; /* was 47% */
+  font-size: 1.25em; 
+}
+
+.other_choice{
+  position: absolute;
+  text-align: center;
+  right: -100px;
+  font-size: 1.5em;
+}
+
+
+.our_choice{
+  position: absolute;
+  text-align: center;
+  left: -100px; /* was 80 */
+  font-size: 1.5em;
+}
+
+#winner_update{ 
+  position: absolute;
+  text-align: center;
+  left: 38.5%; /* was 42% */
+  top: 1%;
+
+}
+
+#generate_data{
+  background-color: blue;
+  position: absolute;
+  top: 80%;
+}
+
+#CompleteList{
+  background-color: white;
+}
+
+
+
+
+

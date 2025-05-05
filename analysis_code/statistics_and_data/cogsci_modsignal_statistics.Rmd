@@ -1,0 +1,611 @@
+---
+title: "Statistics for the CogSci article 'Cooperation and deception in the Mod-Signal Game'"
+author: "Abi Raveenthiran, J.D. Top"
+date: '6-11-2024'
+output: html_document
+---
+
+Package loading
+```{r setup, include=FALSE}
+library(magrittr)
+library(dplyr)
+library(hash) 
+library(purrr)
+```
+
+Comparison of confidence that humans are human and agents are human as reported in the final questionnaire
+```{r}
+q_data <- read.csv('modsignal_questionnaire_data.csv', na.strings= c("-"))  # Read questionnaire data
+
+# Make separate datasets for each of the three player numbers
+data_p1 <- q_data %>% filter(grepl("1$", Participant))
+data_p2 <- q_data %>% filter(grepl("2$", Participant))
+data_p3 <- q_data %>% filter(grepl("3$", Participant))
+
+# Vectors with each participant's mean confidence that the humans they played against were human, and the agent they played against was human
+confidenceHumanVector = c()
+confidenceAgentVector = c()
+
+for(i in 1:21) {
+  if(grepl("1$", q_data$Participant[i])){
+    confidenceHumanVector = c(confidenceHumanVector, mean(c(q_data$B1.Human..[i], q_data$B2.Human..[i])))
+    confidenceAgentVector = c(confidenceAgentVector, q_data$B3.Human..[i])
+  } else if(grepl("2$", q_data$Participant[i])) {
+    confidenceHumanVector = c(confidenceHumanVector, mean(c(q_data$B1.Human..[i], q_data$B3.Human..[i])))
+    confidenceAgentVector = c(confidenceAgentVector, q_data$B2.Human..[i])
+  } else if(grepl("3$", q_data$Participant[i])) {
+    confidenceHumanVector = c(confidenceHumanVector, mean(c(q_data$B2.Human..[i], q_data$B3.Human..[i])))
+    confidenceAgentVector = c(confidenceAgentVector, q_data$B1.Human..[i])
+  }
+}
+
+# Means and SDs
+mean(confidenceHumanVector[!is.na(confidenceHumanVector)])
+sd(confidenceHumanVector[!is.na(confidenceHumanVector)])
+mean(confidenceAgentVector[!is.na(confidenceAgentVector)])
+sd(confidenceAgentVector[!is.na(confidenceAgentVector)])
+
+# First we test for normality
+qqnorm(confidenceHumanVector[!is.na(confidenceHumanVector)])
+shapiro.test(confidenceHumanVector[!is.na(confidenceHumanVector)])
+qqnorm(confidenceAgentVector[!is.na(confidenceAgentVector)])
+shapiro.test(confidenceAgentVector[!is.na(confidenceAgentVector)])
+
+# T-Test comparing confidence in human being human and agents being human
+t.test(confidenceHumanVector, confidenceAgentVector, paired = TRUE, alternative = "two.sided", na.rm=TRUE)
+
+```
+
+
+Compare distance to signal between humans in the human-human condition, humans in the human-agent condition, and the agent in the human-agent condition.
+
+Distance between choice and signal
+
+If c is your choice, and s is the signal, then the distance 
+between your choice and the signal is min{(c − s) mod 24, (s − c) mod 24}. 
+For human players, the mean was around 3.5. As there is no
+signal in the Mod game, Frey and Goldstone (2013) use the
+distance between players’ choices, the mean of which was
+3.6. For perfect cooperative play in the Mod-Signal game,
+the mean distance between choice and signal would be
+0.5. In the Mod game, the mean distance between choices
+would be 1 for perfect cooperation. For both metrics, the
+mean for random play would be around 6.
+```{r}
+
+data <- read.csv('modsignal_trials_data.csv') # Read  data from file
+
+# First, sort by game and round
+# Next, increase signal/action by 1 so it's in range 1-24
+adjustedData <- data[order(data$game,data$round ),] %>% mutate(signal = signal+1, action = action+1)
+adjustedData <- adjustedData %>% filter(!grepl("(s5_g23|s5_g24|s5_14|s5_24)", game))  # Exclusions: Remove two games, as well as two weird datapoints
+
+# Separate data into signaler and responder data
+signals <- adjustedData %>% filter(round%%2 == player%%2)
+responses <- adjustedData %>% filter(round%%2 != player%%2)
+signals <- signals %>% rename(signaler = player, actionTime = reactionTime)
+responses <- responses %>% rename(responder = player, response = action)
+
+# Merge signaler and responder data
+mergedData <- merge(signals, responses, by = c("game", "round", "signal"))
+
+# Separate data by game
+mergedGames <- group_split(mergedData, mergedData$game)
+
+# Add distance from choices to signal and responses to signal
+mergedData <- mergedData %>% mutate(
+  actionAbsDiff = case_when(
+    abs((action-1) - (signal-1)) > 12 ~ 24 - abs((action-1) - (signal-1)),
+    abs((action-1) - (signal-1)) <= 12 ~ abs((action-1) - (signal-1)) 
+  ),
+  responseAbsDiff = case_when(
+    abs((response-1) - (signal-1)) > 12 ~ 24 - abs((response-1) - (signal-1)),
+    abs((response-1) - (signal-1)) <= 12 ~ abs((response-1) - (signal-1)) 
+  )
+)
+
+# Add distance to signal for each player
+mergedData <- mergedData %>% mutate(
+  player1AbsDiff = case_when(
+    round%%2 == 1 ~ actionAbsDiff, 
+    round%%2 == 0 ~ responseAbsDiff
+  ),
+  player0AbsDiff = case_when(
+    round%%2 == 0 ~ actionAbsDiff, 
+    round%%2 == 1 ~ responseAbsDiff
+  )
+)
+
+# Separate data by game
+mergedGames <- group_split(mergedData, mergedData$game)
+
+# Compute distance to signal
+sigDistHH = c()
+sigDistHA = c()
+sigDistA = c()
+
+for (game in mergedGames){
+  if(!grepl("4$", head(game$game, 1))){
+    player0sigDist = game$player0AbsDiff
+    player1sigDist = game$player1AbsDiff
+    sigDistHH <- c(sigDistHH, player0sigDist)
+    sigDistHH <- c(sigDistHH, player1sigDist)
+  } else if(grepl("4$", head(game$game, 1))){
+    player0sigDist = game$player0AbsDiff
+    sigDistHA <- c(sigDistHA, player0sigDist)
+    
+    player1sigDist = game$player1AbsDiff
+    sigDistA <- c(sigDistA, player1sigDist)
+  }
+}
+
+# Convert to data frame
+sigDistFrameHA = data.frame(sigDistHA, seq(1:length(sigDistHA)))
+sigDistFrameHH = data.frame(sigDistHH, seq(1:length(sigDistHH)))
+sigDistFrameA = data.frame(sigDistA, seq(1:length(sigDistA)))
+
+# Compute means and SDs
+mean(sigDistFrameHH$sigDistHH)
+sd(sigDistFrameHH$sigDistHH)
+mean(sigDistFrameHA$sigDistHA)
+sd(sigDistFrameHA$sigDistHA)
+mean(sigDistFrameA$sigDistA)
+sd(sigDistFrameA$sigDistA)
+
+# Check for normality
+qqnorm(sigDistHH)
+shapiro.test(sigDistHH)
+qqnorm(sigDistHA)
+shapiro.test(sigDistHA)
+qqnorm(sigDistA)
+shapiro.test(sigDistA)
+
+# Run a Kruskal-Wallis test
+res <- kruskal.test(list(sigDistHH,sigDistHA,sigDistA))
+res
+```
+
+Compare efficiency, or number of rounds where a point was gained
+```{r}
+
+# Add both players' points to data
+mergedData <- mergedData[order(mergedData$game, mergedData$round),] %>% mutate(
+  player1Point = case_when(
+    action-response == 1 & round%%2 == 1 ~ 1, 
+    action-response == -23 & round%%2 == 1 ~ 1, 
+    action-response != (-23 && 1) & round%%2 == 1 ~ 0,
+    response-action == 1 & round%%2 == 0 ~ 1,
+    response-action == -23 & round%%2 == 0 ~ 1,
+    response-action != (-23 && 1) & round%%2 == 0 ~ 0),
+  player0Point = case_when(
+    action-response == 1 & round%%2 == 0 ~ 1, 
+    action-response == -23 & round%%2 == 0 ~ 1, 
+    action-response != (-23 && 1) & round%%2 == 0 ~ 0,
+    response-action == 1 & round%%2 == 1 ~ 1,
+    response-action == -23 & round%%2 == 1 ~ 1,
+    response-action != (-23 && 1) & round%%2 == 1 ~ 0)
+  )
+
+# Separate data by game
+mergedGames <- group_split(mergedData, mergedData$game)
+
+# Compute scores
+scoresHA = c()
+scoresHH = c()
+scoresA = c()  # NEW
+
+for (game in mergedGames){
+  if(!grepl("4$", head(game$game, 1))){
+    player1Points = sum(game$player1Point)
+    player0Points = sum(game$player0Point)
+    scoresHH <- c(scoresHH, player0Points)
+    scoresHH <- c(scoresHH, player1Points)
+  } else if(grepl("4$", head(game$game, 1))){
+    player0Points = sum(game$player0Point)
+    scoresHA <- c(scoresHA, player0Points)
+    
+    player1Points = sum(game$player1Point)  # NEW for agent
+    scoresA <- c(scoresA, player1Points)
+  }
+}
+
+# Calculate proportions and efficiency
+sum(scoresHH)
+length(scoresHH)*20
+sum(scoresHH)/(length(scoresHH)*20)
+sum(scoresHA)
+length(scoresHA)*20
+sum(scoresHA)/(length(scoresHA)*20)
+sum(scoresA)
+length(scoresA)*20
+sum(scoresA)/(length(scoresA)*20)
+
+
+# Run Chi-squared test
+tab <- as.table(rbind(c(sum(scoresHH),sum(scoresHA),sum(scoresA)),c((length(scoresHH)*20)-sum(scoresHH), (length(scoresHA)*20)-sum(scoresHA), (length(scoresA)*20)-sum(scoresA))))
+dimnames(tab) <- list(point = c("yes","no"), player = c("HH","HA","A"))
+xsq <- chisq.test(tab)
+xsq
+
+(sum(scoresHH)+sum(scoresHA))/(length(scoresHH)*20 + length(scoresHA)*20)  # Mean efficiency across both conditions
+```
+
+Signals, rates, accelerations for generating the circular histograms
+```{r}
+
+# Add difference between signal and action, and remove agent plays
+signals <- signals %>% mutate(diff = case_when(
+  action-signal <= -1 ~ (action-signal+24),
+  action-signal >= 0 ~ (action-signal+0))) %>% filter(signaler!=3)
+
+responses <- responses %>% mutate(diff = case_when(
+  response-signal <= -1 ~ (response-signal+24),
+  response-signal >= 0 ~ (response-signal+0))) %>% filter(responder!=3)
+
+# Function for circular shifting of data
+circshift_any <- function(a, sz) {
+  indexers <- map2(dim(a), sz, function(len, s) (1:len - s - 1) %% len + 1)
+  indexing_matrix <- as.matrix(do.call(expand.grid, indexers))
+
+  array(a[indexing_matrix], dim(a))
+}
+
+dataLine1 <- toString(table(factor(signals$diff, levels = 0:23)))  # Frequencies of choice-signal differences as string
+dataLine2 <- toString(table(factor(responses$diff, levels = 0:23))) 
+dataLabel1 <- toString(c(seq(12,0,-1),seq(23,13,-1)))
+dataLabel2 <- dataLabel1
+dataCaptions <- "Choice - Signal signaler,Choice - Signal receiver,Acceleration"
+
+# Now compute acceleration
+# Remove agent data and add difference
+humanData <- adjustedData %>%  filter(player!=3) %>% mutate(diff = case_when( #  
+  action-signal <= -1 ~ (action-signal+24),
+  action-signal >= 0 ~ (action-signal+0)))
+humanData <- arrange(humanData, game, round, player) # Sort so player 0 is odd and player 1 is even rows
+
+# Add cooperative difference
+humanData <- humanData %>% mutate(coopdiff = case_when(
+  round%%2 == player%%2 ~ diff,   # Signal
+  round%%2 != player%%2 ~ (diff - 1) %% 24 # Response
+))
+
+# Calculate acceleration
+humanData <- humanData %>% mutate(acc = case_when(
+  round == 1 ~ NA,
+  round != 1 ~ (coopdiff - lag(coopdiff,2))
+))
+
+# Remove NAs
+humanData <- humanData %>% mutate(acc = acc %% 24)
+
+totData <- humanData %>% filter(!is.na(acc))                                        # All data
+hhData <- humanData %>% filter(substr(game, 6, 6) != "4") %>% filter(!is.na(acc))   # Remove all rounds with computer
+haData <- humanData %>% filter(substr(game, 6, 6) == "4") %>% filter(!is.na(acc))   # Remove all rounds without computer
+
+# Separate into cooperative and competitive data
+coopDat <- humanData %>% filter(coopdiff == 0) %>% filter(!is.na(acc)) 
+compDat <- humanData %>% filter(coopdiff != 0)
+
+# Generate graphs as string
+dataLine3 <- toString(table(factor(totData$acc, levels = 0:23)))
+dataLabel3 <- dataLabel1
+
+
+outDat <- c(dataLine1,dataLine2,dataLine3,dataLabel1,dataLabel2,dataLabel3,dataCaptions)
+file <- file("circlehistogram_data_all.csv")
+writeLines(outDat, file)
+close(file)
+
+table(factor(signals$diff, levels = 0:23))[1] + table(factor(responses$diff, levels = 0:23))[2] # Total cooperative plays
+(sum(table(factor(signals$diff, levels = 0:23))) + sum(table(factor(responses$diff, levels = 0:23)))) - (table(factor(signals$diff, levels = 0:23))[1] + table(factor(responses$diff, levels = 0:23))[2])  # Total non-cooperative plays
+table(factor(responses$diff, levels = 0:23))[24] # Playing signal - 1 as responder
+table(factor(responses$diff, levels = 0:23))[2]  # Playing signal + 1 as responder
+
+```
+
+Comparing honesty and trust levels
+```{r}
+
+# Compute honesty and trust
+signals <- signals %>% mutate(honesty = case_when(diff == 0 ~ 1, diff != 0 ~ 0))
+responses <- responses %>% mutate(trust = case_when(diff == 1 ~ 1, diff != 1 ~ 0))
+
+# Separate by condition
+signalsHH <- signals %>% filter(!grepl("4$", game))
+signalsHA <- signals %>% filter(grepl("4$", game))
+signalsA <- adjustedData %>% filter(round%%2 == player%%2) %>% rename(signaler = player, actionTime = reactionTime) %>% mutate(diff = case_when(
+  action-signal <= -1 ~ (action-signal+24),
+  action-signal >= 0 ~ (action-signal+0))) %>% filter(signaler==3) %>% mutate(honesty = case_when(diff == 0 ~ 1, diff != 0 ~ 0))
+responsesHH <- responses %>% filter(!grepl("4$", game))
+responsesHA <- responses %>% filter(grepl("4$", game))
+responsesA <- adjustedData  %>% filter(round%%2 != player%%2) %>% rename(responder = player, response = action) %>% mutate(diff = case_when(
+  response-signal <= -1 ~ (response-signal+24),
+  response-signal >= 0 ~ (response-signal+0))) %>% filter(responder==3) %>% mutate(trust = case_when(diff == 1 ~ 1, diff != 1 ~ 0))
+
+# Calculate proportions of honesty
+h_props <- rbind(c(sum(signalsHH$honesty),sum(signalsHA$honesty),sum(signalsA$honesty)))
+h_tots <- c(sum(signalsHH$honesty),sum(signalsHA$honesty),sum(signalsA$honesty))+c(length(signalsHH$honesty)-sum(signalsHH$honesty), length(signalsHA$honesty)-sum(signalsHA$honesty), length(signalsA$honesty)-sum(signalsA$honesty))
+h_props[1]/h_tots[1]
+h_props[2]/h_tots[2]
+h_props[3]/h_tots[3]
+
+# Run a Chi-Squared test on honesty
+tab <- as.table(rbind(c(sum(signalsHH$honesty),sum(signalsHA$honesty),sum(signalsA$honesty)),
+                      c(length(signalsHH$honesty)-sum(signalsHH$honesty), length(signalsHA$honesty)-sum(signalsHA$honesty), length(signalsA$honesty)-sum(signalsA$honesty))))
+dimnames(tab) <- list(honest = c("yes","no"), player = c("HH","HA","A"))
+xsq <- chisq.test(tab)
+xsq
+
+# Calculate proportions of trust
+t_props <- c(sum(responsesHH$trust),sum(responsesHA$trust),sum(responsesA$trust))
+t_tots <- c(sum(responsesHH$trust),sum(responsesHA$trust),sum(responsesA$trust))+c(length(responsesHH$trust)-sum(responsesHH$trust), length(responsesHA$trust)-sum(responsesHA$trust), length(responsesA$trust)-sum(responsesA$trust))
+t_props[1]/t_tots[1]
+t_props[2]/t_tots[2]
+t_props[3]/t_tots[3]
+
+# Run Chi-Squared test on trust
+tab <- as.table(rbind(c(sum(responsesHH$trust),sum(responsesHA$trust),sum(responsesA$trust)),
+                      c(length(responsesHH$trust)-sum(responsesHH$trust), length(responsesHA$trust)-sum(responsesHA$trust), length(responsesA$trust)-sum(responsesA$trust))))
+dimnames(tab) <- list(trusting = c("yes","no"), player = c("HH","HA","A"))
+xsq <- chisq.test(tab)
+xsq
+
+# Make boxplot
+
+signalsListHH <- group_split(signalsHH, signalsHH$game)
+signalsListHA <- group_split(signalsHA, signalsHA$game)
+
+honestyVectorHH <- c()
+honestyGamesHH <- c()
+
+for (game in signalsListHH){
+  honestySumHH = sum(game$honesty)/20*100
+  honestyVectorHH <- c(honestyVectorHH, honestySumHH)
+  honestyGamesHH <- c(honestyGamesHH, head(game$game, 1))
+}
+honestyFrameHH = data.frame(honestyVectorHH, honestyGamesHH)
+
+honestyVectorHA <- c()
+honestyGamesHA <- c()
+
+for (game in signalsListHA){
+  honestySumHA = sum(game$honesty)/10*100
+  honestyVectorHA <- c(honestyVectorHA, honestySumHA)
+  honestyGamesHA <- c(honestyGamesHA, head(game$game, 1))
+}
+honestyFrameHA = data.frame(honestyVectorHA, honestyGamesHA)
+
+responsesListHH <- group_split(responsesHH, responsesHH$game)
+responsesListHA <- group_split(responsesHA, responsesHA$game)
+
+trustVectorHH <- c()
+trustGamesHH <- c()
+for (game in responsesListHH){
+  trustSumHH = sum(game$trust)/20*100
+  trustVectorHH <- c(trustVectorHH, trustSumHH)
+  trustGamesHH <- c(trustGamesHH, head(game$game, 1))
+}
+trustFrameHH = data.frame(trustVectorHH, trustGamesHH)
+
+trustVectorHA <- c()
+trustGamesHA <- c()
+for (game in responsesListHA){
+  trustSumHA = sum(game$trust)/10*100
+  trustVectorHA <- c(trustVectorHA, trustSumHA)
+  trustGamesHA <- c(trustGamesHA, head(game$game, 1))
+}
+trustFrameHA = data.frame(trustVectorHA, trustGamesHA)
+
+par(mai = c(1, 1.5, 1, 1))
+boxplot(c(trustFrameHH$trustVectorHH,trustFrameHA$trustVectorHA),c(honestyFrameHH$honestyVectorHH,honestyFrameHA$honestyVectorHA),   # NEW: Added agent here
+        main = "Honesty/trust levels of humans in all conditions",
+        at = c(1,2),  # NEW: added 3
+        names = c("Trust","Honesty"),  # NEW: added , "A"
+        las = 1,
+        col = c("grey", "grey", "grey", "grey", "grey"),
+        border = "black",
+        horizontal = TRUE,
+        notch = FALSE,
+        xlab = "Honesty and trust levels (%)",
+        ylim = c(0, 100),
+        cex.main=2, 
+        cex.lab=2,
+        cex.axis=2
+        
+)
+```
+
+Compare reaction times for cooperative and non-cooperative play
+```{r}
+
+# Add participant numbers
+signals <- signals %>% mutate(participant = case_when(
+  strtoi(substr(signals$game,6,6)) == 4 & signaler == 1 ~ 0,
+  strtoi(substr(signals$game,6,6)) == 4 & signaler == 0 ~ 
+    (strtoi(substr(signals$game,2,2))-1)*3 + strtoi(substr(signals$game,5,5)),
+  strtoi(substr(signals$game,6,6)) - strtoi(substr(signals$game,5,5)) == 1 & signaler == 1 ~ 
+    (strtoi(substr(signals$game,2,2))-1)*3 + strtoi(substr(signals$game,6,6)),
+  strtoi(substr(signals$game,6,6)) - strtoi(substr(signals$game,5,5)) == 1 & signaler == 0 ~ 
+    (strtoi(substr(signals$game,2,2))-1)*3 + strtoi(substr(signals$game,5,5)),
+  strtoi(substr(signals$game,6,6)) - strtoi(substr(signals$game,5,5)) == 2 & signaler == 1 ~ 
+    (strtoi(substr(signals$game,2,2))-1)*3 + strtoi(substr(signals$game,5,5)),
+  strtoi(substr(signals$game,6,6)) - strtoi(substr(signals$game,5,5)) == 2 & signaler == 0 ~ 
+    (strtoi(substr(signals$game,2,2))-1)*3 + strtoi(substr(signals$game,6,6)),
+))
+
+responses <- responses %>% mutate(participant = case_when(
+  strtoi(substr(responses$game,6,6)) == 4 & responder == 1 ~ 0,
+  strtoi(substr(responses$game,6,6)) == 4 & responder == 0 ~ 
+    (strtoi(substr(responses$game,2,2))-1)*3 + strtoi(substr(responses$game,5,5)),
+  strtoi(substr(responses$game,6,6)) - strtoi(substr(responses$game,5,5)) == 1 & responder == 1 ~ 
+    (strtoi(substr(responses$game,2,2))-1)*3 + strtoi(substr(responses$game,6,6)),
+  strtoi(substr(responses$game,6,6)) - strtoi(substr(responses$game,5,5)) == 1 & responder == 0 ~ 
+    (strtoi(substr(responses$game,2,2))-1)*3 + strtoi(substr(responses$game,5,5)),
+  strtoi(substr(responses$game,6,6)) - strtoi(substr(responses$game,5,5)) == 2 & responder == 1 ~ 
+    (strtoi(substr(responses$game,2,2))-1)*3 + strtoi(substr(responses$game,5,5)),
+  strtoi(substr(responses$game,6,6)) - strtoi(substr(responses$game,5,5)) == 2 & responder == 0 ~ 
+    (strtoi(substr(responses$game,2,2))-1)*3 + strtoi(substr(responses$game,6,6)),
+))
+
+# Create cooperative/non-cooperative data
+honestSignals <- signals %>% filter(honesty == 1) %>% rename(player = signaler, reactionTime = actionTime) %>% mutate(trust = -1)
+disHonestSignals <- signals %>% filter(honesty == 0) %>% rename(player = signaler, reactionTime = actionTime) %>% mutate(trust = -1)
+trustingResponses <- responses %>% filter(trust == 1) %>% rename(player = responder, action = response) %>% mutate(honesty = -1)
+disTrustingResponses <- responses %>% filter(trust == 0) %>% rename(player = responder, action = response) %>% mutate(honesty = -1)
+
+coopPlays <- rbind(honestSignals,trustingResponses)    
+noncoopPlays <- rbind(disHonestSignals,disTrustingResponses)
+
+# Make list of cooperative and non-cooperative reaction times
+meansCoopRT = c()
+meansNoncoopRT = c()
+for(i in 1:21){
+  meansCoopRT = c(meansCoopRT, (mean(log(coopPlays$reactionTime[coopPlays$participant == i]))))
+  meansNoncoopRT = c(meansNoncoopRT, (mean(log(noncoopPlays$reactionTime[noncoopPlays$participant == i]))))
+}
+
+# Calculate means and SDs
+mean(meansCoopRT[!is.na(meansCoopRT)])
+sd(meansCoopRT[!is.na(meansCoopRT)])
+mean(meansNoncoopRT[!is.na(meansNoncoopRT)])
+sd(meansNoncoopRT[!is.na(meansNoncoopRT)])
+
+# Check for normality
+qqnorm(meansCoopRT)
+shapiro.test(meansCoopRT)
+qqnorm(meansNoncoopRT)
+shapiro.test(meansNoncoopRT)
+
+# Run t-test
+t.test(meansCoopRT, meansNoncoopRT, paired = TRUE, alternative = "two.sided", na.rm=TRUE)
+```
+
+First rounds of deception in the human-human games
+```{r}
+
+# Add column for whether any deception occurs (here, as responder, signal - 1 is cooperative)
+mergedData <- mergedData %>%  mutate(honesty = case_when(actionAbsDiff == 0 ~ 1, actionAbsDiff != 0 ~ 0)) %>%  mutate(trust = case_when(responseAbsDiff == 1 ~ 1, responseAbsDiff != 1 ~ 0)) %>% mutate(sacrif = case_when((responseAbsDiff %% 24) == 23 ~ 1,  (responseAbsDiff %% 24) != 23 ~ 0)) %>% mutate(coop = trust + sacrif) %>% mutate( anydecep = 1-(honesty*coop))
+
+mergedDataHH <- mergedData %>% filter(!grepl("4$", game))  # Only the human-human condition
+
+gameDict <- hash()
+for( i in rownames(mergedDataHH) ){
+  gameName <- mergedDataHH[i, "game"]
+  gameDict[[gameName]] <- 9001
+}
+for( i in rownames(mergedDataHH) ){
+  gameName <- mergedDataHH[i, "game"]
+  roundNum <- mergedDataHH[i, "round"]
+  decep <- mergedDataHH[i, "anydecep"]
+  if(decep == 1){
+    if( roundNum < gameDict[[gameName]]){
+      gameDict[[gameName]] <- roundNum
+    }
+  }
+}
+table(values(gameDict))  # First deception in the human-human condition
+```
+
+Who played non-cooperatively first in the human-agent condition?
+```{r}
+
+mergedDataHA <- mergedData %>% filter(grepl("4$", game))  # Only the human-agent condition
+
+# First store first round of non-cooperation for each game
+firstDict <- hash()
+for( i in rownames(mergedDataHA) ){
+  gameName <- mergedDataHA[i, "game"]
+  firstDict[[gameName]] <- 9001
+}
+
+for( i in rownames(mergedDataHA) ){
+  gameName <- mergedDataHA[i, "game"]
+  roundNum <- mergedDataHA[i, "round"]
+  decep <- mergedDataHA[i, "anydecep"]
+  if(decep == 1){
+    if( roundNum < firstDict[[gameName]]){
+      firstDict[[gameName]] <- roundNum
+    }
+  }
+}
+humanFirst = 0
+# Now loop over games to count who shot first
+for (key in ls(firstDict)) {
+  fullRound = mergedData[mergedData$game==key & mergedData$round==firstDict[[key]],]
+  print(fullRound)
+  if(fullRound$signaler == 3){  # IF agent signals
+    if(fullRound$coop == 0){
+      humanFirst <- humanFirst + 1
+    }
+  } else {
+    if(fullRound$honesty == 0){
+      humanFirst <- humanFirst + 1
+    }
+  }
+}
+humanFirst
+
+```
+
+How often does the agent suffer from its bug?
+```{r}
+
+# Count how often agent does not cooperate
+nonCoop = 0
+bug = 0
+tot = 0
+for(i in rownames(mergedDataHA)){
+  tot <- tot + 1
+  if(mergedDataHA[i,"signaler"] == 3){  # Agent is signaling
+    if(mergedDataHA[i,"honesty"] == 0){
+       nonCoop <- nonCoop + 1
+       if(i != 0){
+          lastSignal = mergedDataHA[as.numeric(i)-1,"signal"]
+          lastAction = mergedDataHA[as.numeric(i)-1,"action"]
+          if(lastSignal > lastAction){
+            bug <- bug + 1
+          }
+       }
+    }
+  } else {
+    if(mergedDataHA[i,"trust"] == 0){
+       nonCoop <- nonCoop + 1
+       if(i != 0){
+          lastSignal = mergedDataHA[as.numeric(i)-1,"signal"]
+          lastResponse = mergedDataHA[as.numeric(i)-1,"response"]
+          if(lastSignal > lastResponse){
+            bug <- bug + 1
+          }
+       }
+    }    
+  }
+}
+bug
+```
+
+Is there a correlation between higher-order iterated reasoning and longer log-RTs?
+
+```{r}
+
+# Add log-RTs to data
+signals <- signals %>%  mutate(logRT = log(actionTime))
+responses <- responses %>%  mutate(logRT = log(reactionTime))
+
+# Remove expected plays
+signalsno0 <- signals %>% filter(diff!=0)
+responsesno0 <- responses %>% filter(diff!=1)
+
+### Combine data
+cutSig <- signalsno0[c(6,7,10)]
+cutRes <- responsesno0[c(6,7,10)]
+names(cutSig)[names(cutSig) == 'actionTime'] <- 'RT'
+names(cutRes)[names(cutRes) == 'reactionTime'] <- 'RT'
+cutSig$id <- 1:nrow(cutSig)
+cutRes$id <- (nrow(cutSig)+1):(nrow(cutSig)+nrow(cutRes))
+totRTs <- Reduce(function(x, y) merge(x, y, all=TRUE), list(cutSig,cutRes)) 
+totRTs_sub6 <- totRTs %>%  filter(diff < 7)
+
+# Correlation
+cor(totRTs_sub6$logRT,totRTs_sub6$diff, method="spearman")
+cor.test(totRTs_sub6$logRT,totRTs_sub6$diff,method="spearman")
+```

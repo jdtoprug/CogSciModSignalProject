@@ -1,0 +1,125 @@
+/*** create different versions per block? slight changes such as font colour/background colour to signal a completely different block ***/
+
+body{
+  background-color: #9AE8E4;
+   padding: 2em; 
+  }
+a{
+   position:absolute;
+   list-style:none;
+   padding: 10px;
+   width:50px;
+  -moz-box-shadow:inset 0px 1px 0px 0px #dcecfb;
+  -webkit-box-shadow:inset 0px 1px 0px 0px #dcecfb;
+  box-shadow:inset 0px 1px 0px 0px #dcecfb;
+  background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #beface), color-stop(1, #52e335) );
+  background:-moz-linear-gradient( center top, #beface 5%, #52e335 100% );
+  filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#beface', endColorstr='#52e335');
+  background-color:#beface;
+  -webkit-border-top-left-radius:10px;
+  -moz-border-radius-topleft:10px;
+  border-top-left-radius:10px;
+  -webkit-border-top-right-radius:10px;
+  -moz-border-radius-topright:10px;
+  border-top-right-radius:10px;
+  -webkit-border-bottom-right-radius:10px;
+  -moz-border-radius-bottomright:10px;
+  border-bottom-right-radius:10px;
+  -webkit-border-bottom-left-radius:10px;
+  -moz-border-radius-bottomleft:10px;
+  border-bottom-left-radius:10px;
+  border:1px solid black;
+  color:#080808;
+  text-align:center;
+  text-indent: -3px;
+  font-family:Arial;
+  font-size:15px;
+  font-style:normal;
+  height:8px;
+  line-height:10px;
+  width:12px;
+  text-decoration:none;
+  }
+.center_circle{
+  position: absolute;
+  margin: auto;
+  text-align: center;
+  top: 400px;
+  right: 530px;
+  font-size: 1.25em;
+  color: black;
+  font-weight: normal;
+
+}
+h3{
+  text-align: center;
+}
+
+p{
+  text-align: center; /* was left */
+}
+
+input[type="button"] {
+    position: absolute;
+    left: 70%;
+    width: 120px;
+    margin-left: 35px;
+    background-color:white;
+
+}
+
+.round{
+  /*background-color: blue; */
+  top: 2.5%;
+  position: absolute;
+  left: 42.5%; /* was 45% */
+  text-align: center;
+  font-size: 2em;
+}
+    
+.scores{
+  /*background-color: red; */
+  position: absolute;
+  text-align: center;
+  top: 10%;
+  left:44.6%; /* was 47% */
+  font-size: 1.25em; 
+}
+
+.ag_choice{
+  position: absolute;
+  text-align: center;
+  right: -100px;
+  font-size: 1.5em;
+}
+
+
+.us_choice{
+  position: absolute;
+  text-align: center;
+  left: -100px; /* was 80 */
+  font-size: 1.5em;
+}
+
+#winner_update{ 
+  position: absolute;
+  text-align: center;
+  left: 38.5%; /* was 42% */
+  top: 1%;
+
+}
+
+#generate_data{
+  background-color: blue;
+  position: absolute;
+  top: 80%;
+}
+
+#CompleteList{
+  background-color: white;
+}
+
+
+
+
+

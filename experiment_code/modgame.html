@@ -1,0 +1,323 @@
+<html>
+	<head>
+		<title>Mod game</title>
+		<link rel=stylesheet href="modgame.css" type="text/css"> 
+		<style>
+.limitBox {
+	display: inline-block;
+	width:550px;
+	position: relative;
+}
+#round_label {
+	font-size: 2em;
+}
+.scoreBox {
+	display: inline-block;
+	width:100px;
+	position: relative;
+}
+#statusText {
+	position: absolute;
+	top:260px;
+	left:0;
+	text-align:center;
+	width:400px;
+	left:75px;
+}
+.highLit {
+  background:red;
+}
+.chosen {
+  background:blue;
+}
+		</style>
+	</head>
+
+	<script src="agent.js"></script>
+	<body onload="init();">
+	<center>
+		<div class="limitBox">
+			<span id="round_label"></span><br>
+			<span id="score_label"></span>
+		</div><br>
+
+		<div class="limitBox" style="height: 550px;">
+			<span id="choice_options">
+				<span class="modGameButton" value="0" onclick='userChoice(this.innerHTML);'>1</span>
+				<span class="modGameButton" value="1" onclick='userChoice(this.innerHTML);'>2</span>
+				<span class="modGameButton" value="2" onclick='userChoice(this.innerHTML);'>3</span>
+				<span class="modGameButton" value="3" onclick='userChoice(this.innerHTML);'>4</span>
+				<span class="modGameButton" value="4" onclick='userChoice(this.innerHTML);'>5</span>
+				<span class="modGameButton" value="5" onclick='userChoice(this.innerHTML);'>6</span>
+				<span class="modGameButton" value="6" onclick='userChoice(this.innerHTML);'>7</span>
+				<span class="modGameButton" value="7" onclick='userChoice(this.innerHTML);'>8</span>
+				<span class="modGameButton" value="8" onclick='userChoice(this.innerHTML);'>9</span>
+				<span class="modGameButton" value="9" onclick='userChoice(this.innerHTML);'>10</span>
+				<span class="modGameButton" value="10" onclick='userChoice(this.innerHTML);'>11</span>
+				<span class="modGameButton" value="11" onclick='userChoice(this.innerHTML);'>12</span>
+				<span class="modGameButton" value="12" onclick='userChoice(this.innerHTML);'>13</span>
+				<span class="modGameButton" value="13" onclick='userChoice(this.innerHTML);'>14</span>
+				<span class="modGameButton" value="14" onclick='userChoice(this.innerHTML);'>15</span>
+				<span class="modGameButton" value="15" onclick='userChoice(this.innerHTML);'>16</span>
+				<span class="modGameButton" value="16" onclick='userChoice(this.innerHTML);'>17</span>
+				<span class="modGameButton" value="17" onclick='userChoice(this.innerHTML);'>18</span>
+				<span class="modGameButton" value="18" onclick='userChoice(this.innerHTML);'>19</span>
+				<span class="modGameButton" value="19" onclick='userChoice(this.innerHTML);'>20</span>
+				<span class="modGameButton" value="20" onclick='userChoice(this.innerHTML);'>21</span>
+				<span class="modGameButton" value="21" onclick='userChoice(this.innerHTML);'>22</span>
+				<span class="modGameButton" value="22" onclick='userChoice(this.innerHTML);'>23</span>
+				<span class="modGameButton" value="23" onclick='userChoice(this.innerHTML);'>24</span>
+			</span>
+			<span id="statusText"></span>
+			<span class="modGameButton" id="continueButton" style="width:100;top:255;left:200;background:lightblue;display:none;" onclick='continueRound();'>Continue</span>
+			<span class="our_choice" id="ourchoice"></span>
+			<span class="other_choice" id="otherchoice"></span>
+
+		</div>
+	</center>
+
+		<div id = "winner_update">
+			<p id = "show_winner"></p>
+		</div>
+
+		<div id = "data">
+			<p id = "CompleteList"></p>
+		</div>
+
+		<div id = "generate_data">
+
+		<script type="text/javascript">
+var games = sessionStorage.getItem("games").split(",");
+var players = sessionStorage.getItem("player").split(",");
+var block = 1;
+var currentGame = games.shift();
+var playerID = players.shift()*1;
+sessionStorage.setItem("games", games.join(","))
+sessionStorage.setItem("player", players.join(","))
+var round = 1;
+var signal = -1;
+var timerStart = 0;
+var ourScore = 0;
+var otherScore = 0;
+var choiceList = [];
+var signalList = [];
+var agentWins = [];
+var agentSignals = [];
+var totalSignals = [];
+var allUserChoices = [];
+const expID = 1;
+var choice = 0;
+var playerChoice = 0;
+var agent = new Agent(expID, signal, round);
+
+function init() {
+	displayCircle();
+	setupRound();
+}
+
+function pollResult(result) {
+	var actions = JSON.parse(result);
+	if (result == "-1" || actions.length < 2) {
+		setTimeout("postPackage(\"command=pollResult\",pollResult)", 2000);
+	} else {
+		if (playerID == 3){
+			choiceList.push(actions[0])
+			playerChoice = actions[0]
+		}
+		if ((actions[1-playerID] + 1)%24 == actions[playerID]) {
+			ourScore++;
+		} else if ((actions[playerID] + 1)%24 == actions[1-playerID]) {
+			otherScore++;
+		}
+		updateGUI(actions[playerID] + 1, actions[1-playerID] + 1);
+		endRound();
+	}
+}
+
+function pollSignal(result) {
+	if (signal < 0) {
+		if (result === "" || result == "-1") {
+			setTimeout("postPackage(\"command=pollSignal\",pollSignal)", 2000);
+		} else {
+			signal = result*1;
+			signalList.push(signal)
+			totalSignals.push(signal);
+			startSelectAction();
+		}
+	}
+}
+
+function postPackage(dataToSend, handler) {
+	xhttp = new XMLHttpRequest();
+	if (handler) {
+		xhttp.onreadystatechange = function() {
+			if (xhttp.readyState === XMLHttpRequest.DONE) {
+				handler(this.responseText);
+			}
+		};
+	}
+	xhttp.open("POST", "modgamehost.php", true);
+	xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	xhttp.send("gameID=" + currentGame + "&round="+ round + "&player=" + playerID + "&" + dataToSend);
+}
+
+function randomInteger(min, max) { // min and max included 
+  return Math.floor(Math.random() * (max - min + 1) + min)
+}
+
+function setupRound() {
+	acceptInput = false;
+	for (var  i = 0; i < 24; ++i) {
+		document.getElementById("choice_options").getElementsByClassName("modGameButton")[i].classList.remove("chosen");
+	}
+	clearSignal();
+	updateGUI(-1, -1);
+	timerStart = (new Date()).getTime();
+	signal = -1;
+	if (round % 2 == playerID % 2) {
+		document.getElementById("statusText").innerHTML = "Please select a number to signal to the other player.";
+		if (playerID == 3) {
+			if (round == 1){
+				signalTime = randomInteger(1000, 5000);
+				setTimeout("setSignal("+randomInteger(0,23)+")", signalTime)
+			}
+			else {
+				console.log("previous signals: " + agentSignals)
+				rate = randomInteger(0, 4); //average rate according to figure 2.1 is between 0 and 4
+				console.log("rate: " + rate);
+				previousSignal = agentSignals[agentSignals.length - 1];
+				setTimeout("setSignal((previousSignal + rate) % 24);",signalTime); 
+			}
+		} 
+		acceptInput = true;
+	} else {
+		document.getElementById("statusText").innerHTML = "Please wait while the other player selects a number to signal.";
+		pollSignal("-1");
+	}
+}
+
+function clearSignal() {
+	if (signal >= 0) {
+		document.getElementById("choice_options").getElementsByClassName("modGameButton")[signal].classList.remove("highLit");
+	}
+}
+
+function setSignal(signalId) {
+	acceptInput = false;
+	signal = signalId;
+	if (playerID == 3){
+		agentSignals.push(signal)
+		totalSignals.push(signal);
+	}
+	postPackage("command=sendSignal&signal="+signalId+"&reactionTime="+((new Date()).getTime() - timerStart), console.log);
+	startSelectAction();
+}
+
+function startSelectAction() {
+	if (!acceptInput) {
+		document.getElementById("choice_options").getElementsByClassName("modGameButton")[signal].classList.add("highLit");
+		document.getElementById("statusText").innerHTML = (round % 2 == playerID % 2 ? "You":"The other player") + " signalled number "+(signal+1)+".<br\>Choose a number to play.";
+		timerStart = (new Date()).getTime();
+		acceptInput = true;
+		if (playerID == 3) {
+			signalTime = randomInteger(1000, 5000);
+			setTimeout("simulateAgent()", signalTime)
+		}
+	}
+}
+		
+function displayCircle(){
+	var listElements = document.getElementById("choice_options").getElementsByClassName("modGameButton");
+	var step = (2*Math.PI)/listElements.length;
+	var angle = 0; 
+	var circleCenterX = 255;
+	var circleCenterY = 255;
+	var radius = 250;
+	for(var i = 0; i < listElements.length; i++) { 
+		var element = listElements[i];
+		var liLeft = Math.round(circleCenterX + radius * Math.cos(angle));
+		var liTop = Math.round(circleCenterY + radius * Math.sin(angle));
+		element.style.left = liLeft+"px";
+		element.style.top = liTop+"px";
+		angle += step;
+	}
+}
+
+function endRound() {
+	round++;
+	document.getElementById("statusText").innerHTML = "";
+	document.getElementById("continueButton").style.display = "inline-block";
+	if (playerID == 3){
+		document.getElementById("continueButton").click()
+	}
+}
+
+function continueRound() {
+	if (round <= 20) {
+		setupRound();
+	} else {
+		if (playerID == 3){
+			setTimeout("window.location.href='modgame.html';",500);
+		}
+		else {
+			var newPages = ["questionnaire.html", "questionnaire2.html", "questionnaire1.html"];
+			setTimeout("window.location.href='"+newPages[games.length]+"';",500);
+		}
+	}
+}
+
+function updateGUI(ownAct, otherAct) {
+	if (ownAct > 0) {
+		document.getElementById("ourchoice").innerHTML = "You chose: " + "<BR>" + ownAct;
+		document.getElementById("choice_options").getElementsByClassName("modGameButton")[ownAct-1].classList.remove("highLit");
+		document.getElementById("choice_options").getElementsByClassName("modGameButton")[ownAct-1].classList.add("chosen");
+	} else {
+		document.getElementById("ourchoice").innerHTML = "";
+	}
+	if (otherAct > 0) {
+		document.getElementById("otherchoice").innerHTML = "The other player chose: "+ "<BR>" + otherAct;
+		document.getElementById("choice_options").getElementsByClassName("modGameButton")[otherAct-1].classList.remove("highLit");
+		document.getElementById("choice_options").getElementsByClassName("modGameButton")[otherAct-1].classList.add("chosen");
+	} else {
+		document.getElementById("otherchoice").innerHTML = "";
+	}
+	document.getElementById("score_label").innerHTML = "You - Other \n " + "<br />"+ ourScore + " - " + otherScore;
+	document.getElementById("round_label").innerHTML = "Block "+block+", Round: "+ round + "/20";
+	document.getElementById("continueButton").style.display = "none";
+}
+
+
+function userChoice(number) {
+	if (acceptInput) {
+		acceptInput = false;
+		if (signal < 0) {
+			if (round % 2 == playerID % 2) {
+				setSignal(number*1 - 1);
+			}
+		} else {
+			acceptInput = false;
+			var decisionTime = (new Date()).getTime() - timerStart;
+			var userChoice = number*1 - 1;
+			document.getElementById("statusText").innerHTML = "Please wait while the other player chooses a number to play.";
+			updateGUI(userChoice+1, -1);
+			postPackage("command=sendAction&signal="+signal+"&action="+userChoice+"&reactionTime="+decisionTime);
+			pollResult("-1");
+		}
+	}
+}
+
+function simulateAgent() {
+	console.log("choiceList: " + choiceList)
+	choice = agent.choice(expID, signal, round, playerChoice, signalList, choiceList, agentWins, agentSignals, totalSignals, choiceList);
+	console.log("choice: " + choice)
+	document.getElementsByClassName("modGameButton")[choice].click()
+}
+
+
+
+</script>
+
+
+	</body>
+</html>
+

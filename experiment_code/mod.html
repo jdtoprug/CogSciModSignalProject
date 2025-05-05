@@ -1,0 +1,11 @@
+Game: <input type="text" id="gameInput"><br>
+Player ID: <input type="text" id="playerInput"><br>
+<input type=button value="Start" onclick="javascript:generateGame();">
+
+<script>
+function generateGame() {
+	sessionStorage.setItem("games", "["+document.getElementById("gameInput").value+"]");
+	sessionStorage.setItem("player", document.getElementById("playerInput").value);
+	document.location.href = "modgame.html";
+}
+</script>

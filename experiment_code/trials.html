@@ -1,0 +1,274 @@
+
+<html>
+    <head>
+        <title>Experiment test</title>
+        <link rel=stylesheet href="experiment_css.css" type="text/css"> 
+        <style>
+.limitBox {
+    display: inline-block;
+    width:550px;
+    position: relative;
+}
+#round_num {
+    font-size: 2em;
+}
+.scoreBox {
+    display: inline-block;
+    width:100px;
+    position: relative;
+}
+#statusText {
+    position: absolute;
+    top:260px;
+    left:0;
+    text-align:center;
+    width:400px;
+    left:75px;
+}
+.highLit {
+  background:red;
+}
+.chosen {
+  background:blue;
+}
+        </style>
+    </head>
+
+    <body onload="init();">
+    <center>
+        <div class="limitBox">
+            <span id = "round_num"></span>
+        </div><br>
+        <div class="limitBox">
+            <p id = "score_tracker"> </p>
+        </div><br>
+
+        <div class="limitBox" style="height: 550px;">
+            <span id="choice_options">
+            <a href="#" class="myButton" value = "0" onclick='userChoice(this)'; 'incrementRound()'>1</a>
+            <a href="#" class="myButton" value = "1" onclick='userChoice(this)'; 'incrementRound()'>2</a>
+            <a href="#" class="myButton" value = "2" onclick='userChoice(this)'; 'incrementRound()'>3</a>
+            <a href="#" class="myButton" value = "3" onclick='userChoice(this)'; 'incrementRound()'>4</a>
+            <a href="#" class="myButton" value = "4" onclick='userChoice(this)'; 'incrementRound()'>5</a>
+            <a href="#" class="myButton" value = "5" onclick='userChoice(this)'; 'incrementRound()'>6</a>
+            <a href="#" class="myButton" value = "6" onclick='userChoice(this)'; 'incrementRound()'>7</a>
+            <a href="#" class="myButton" value = "7" onclick='userChoice(this)'; 'incrementRound()'>8</a>
+            <a href="#" class="myButton" value = "8" onclick='userChoice(this)'; 'incrementRound()'>9</a>
+            <a href="#" class="myButton" value = "9" onclick='userChoice(this)'; 'incrementRound()'>10</a>
+            <a href="#" class="myButton" value = "10" onclick='userChoice(this)'; 'incrementRound()'>11</a>
+            <a href="#" class="myButton" value = "11" onclick='userChoice(this)'; 'incrementRound()'>12</a>
+            <a href="#" class="myButton" value = "12" onclick='userChoice(this)'; 'incrementRound()'>13</a>
+            <a href="#" class="myButton" value = "13" onclick='userChoice(this)'; 'incrementRound()'>14</a>
+            <a href="#" class="myButton" value = "14" onclick='userChoice(this)'; 'incrementRound()'>15</a>
+            <a href="#" class="myButton" value = "15" onclick='userChoice(this)'; 'incrementRound()'>16</a>
+            <a href="#" class="myButton" value = "16" onclick='userChoice(this)'; 'incrementRound()'>17</a>
+            <a href="#" class="myButton" value = "17" onclick='userChoice(this)'; 'incrementRound()'>18</a>
+            <a href="#" class="myButton" value = "18" onclick='userChoice(this)'; 'incrementRound()'>19</a>
+            <a href="#" class="myButton" value = "19" onclick='userChoice(this)'; 'incrementRound()'>20</a>
+            <a href="#" class="myButton" value = "20" onclick='userChoice(this)'; 'incrementRound()'>21</a>
+            <a href="#" class="myButton" value = "21" onclick='userChoice(this)'; 'incrementRound()'>22</a>
+            <a href="#" class="myButton" value = "22" onclick='userChoice(this)'; 'incrementRound()'>23</a>
+            <a href="#" class="myButton" value = "23" onclick='userChoice(this)'; 'incrementRound()'>24</a>
+            </span>
+            <span id="statusText"></span>
+            <a href="#" class="myButton" download="data.csv" id="continueButton" style="width:100;top:255;left:200;background:lightblue;display:none;" onclick='continueRound();'>Continue</a>
+            <p class="us_choice" id = "userchoice"></p>
+            <p class="ag_choice" id = "agentchoice"></p>
+
+        </div>
+    </center>
+
+        <div id = "winner_update">
+            <p id = "show_winner"></p>
+        </div>
+
+        <div id = "data">
+            <p id = "CompleteList"></p>
+        </div>
+
+        <div id = "generate_data">
+
+
+        <script src="agent.js"></script>
+        <script type="text/javascript">
+        
+
+/***** TRIALS, only cooperative *****/  
+//<script src="tom_agent.js">    
+var round = 1;
+var signal = -1;
+var timerStart = 0;
+var allData = [];
+var currentData = null;
+var acceptInput = false;
+var downloadableData = null;
+var playerScore = 0;
+var agentScore = 0;
+
+var signalList = [];
+var choiceList = [];
+
+var expID = 0;
+var choice = 0;
+var playerChoice = 0;
+
+var agent = new Agent(expID, signal, round);
+
+function init() {
+    displayCircle();
+    setupRound();
+}
+
+function randomInteger(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function setupRound() {
+    acceptInput = false;
+    clearSignal();
+    updateGUI();
+    currentData = {round: round};
+    allData.push(currentData);
+    timerStart = (new Date()).getTime();
+	for (var  i = 0; i < 24; ++i) {
+		document.getElementById("choice_options").getElementsByTagName("a")[i].classList.remove("chosen");
+	}
+    if (round % 2 == 0) {
+        document.getElementById("statusText").innerHTML = "Please select a number to signal to the agent.";
+        signal = -1;
+        acceptInput = true;
+    } else {
+        //document.getElementById("statusText").innerHTML = "Please wait while the other player selects a number to signal.";
+        signal = -1;
+        /* SET AGENT SIGNAL CHOICE AND REACTION TIME HERE */
+        random = randomInteger(0, 23);
+        setTimeout("setSignal(random);",0); //was 1000
+    }
+}
+
+function clearSignal() {
+    if (signal >= 0) {
+        document.getElementById("choice_options").getElementsByTagName("a")[signal].classList.remove("highLit");
+    }
+}
+
+function setSignal(signalId) {
+    acceptInput = false;
+    currentData["signalTime"] = (new Date()).getTime() - timerStart;
+    signal = signalId*1;
+    currentData["signal"] = signal;
+    document.getElementById("choice_options").getElementsByTagName("a")[signal].classList.add("highLit");
+    document.getElementById("statusText").innerHTML = (round % 2 == 0 ? "You":"The agent") + " signalled number "+(signal+1)+".<br\>Choose a number to play.";
+    timerStart = (new Date()).getTime();
+    acceptInput = true;
+}
+        
+function displayCircle(){
+    var listElements = document.getElementById("choice_options").getElementsByTagName("a");
+    var step = (2*Math.PI)/listElements.length;
+    var angle=0; 
+    var circleCenterX = 255;
+    var circleCenterY = 255;
+    var radius = 250;
+    for(var i = 0; i<listElements.length; i++) { 
+        var element = listElements[i];
+        var liLeft=Number(Math.round(circleCenterX+radius*Math.cos(angle)));
+        var liTop=Number(Math.round(circleCenterY+radius*Math.sin(angle)));
+        element.style.left = liLeft+"px";
+        element.style.top = liTop+"px";
+        angle+=step;   
+    }
+}
+
+function endRound() {
+    updateGUI();
+    round++;
+    document.getElementById("statusText").innerHTML = "";
+    document.getElementById("continueButton").style.display = "inline-block";
+    if (round > 20) {
+        setDownloadLink();
+    }
+}
+
+function continueRound() {
+    if (round <= 4) {
+        setupRound();
+    } else {
+        setTimeout("window.location.href='block1.html';",500);
+    }
+}
+
+function updateGUI() {
+    if (currentData != null) {
+        document.getElementById("userchoice").innerHTML = "You chose: " + "<BR>" + (currentData["userChoice"]+1);
+        document.getElementById("choice_options").getElementsByTagName("a")[currentData["userChoice"]].classList.remove("highLit");
+        document.getElementById("choice_options").getElementsByTagName("a")[currentData["userChoice"]].classList.add("chosen");
+        document.getElementById("agentchoice").innerHTML = "The agent chose: "+ "<BR>" + (currentData["agentChoice"]+1);
+        document.getElementById("choice_options").getElementsByTagName("a")[currentData["agentChoice"]].classList.remove("highLit");
+        document.getElementById("choice_options").getElementsByTagName("a")[currentData["agentChoice"]].classList.add("chosen");
+
+    }
+    document.getElementById("score_tracker").innerHTML = "You - Agent \n " + "<br />"+ playerScore + " - " + agentScore;
+    document.getElementById("round_num").innerHTML = "Practice round: "+ round + "/4";
+    document.getElementById("continueButton").style.display = "none";
+}
+
+function userChoice (number) {
+    if (acceptInput) {
+        acceptInput = false;
+        if (signal < 0) {
+            if (round % 2 == 0) {
+                setSignal(number.getAttribute('value'));
+            }
+        } else {
+            currentData["decisionTimePlayer"] = (new Date()).getTime() - timerStart;
+            currentData["userChoice"] = number.getAttribute("value")*1;
+            
+            /* SET AGENT CHOICE HERE */
+            playerChoice = number.getAttribute("value")*1;
+            console.log("player choice:" + playerChoice);
+            choice = agent.choice(expID, signal, round, playerChoice, signalList, choiceList);
+            console.log("agent choice:" + choice);
+            currentData["agentChoice"] = choice;
+            /*if (round % 2 == 0) { //user signalled
+                currentData["agentChoice"] = (signal+1)%24;
+            } else { //agent signalled
+                currentData["agentChoice"] = signal;
+            }*/
+
+            //document.getElementById("statusText").innerHTML = "Please wait while the other player chooses an action.";
+            /* DETERMINE WHETHER USER SHOULD WAIT HERE */
+            if ((currentData["agentChoice"]+1)%24 == currentData["userChoice"]) {
+                playerScore++;
+            } else if ((currentData["userChoice"]+1)%24 == currentData["agentChoice"]) {
+                agentScore++;
+            }
+            setTimeout("endRound();", 0);
+            
+        }
+    }
+}
+
+function generateData(list) {
+    var outputString = "round,signal,signalTime,userChoice,reactionTime,agentChoice\n";
+    for (var i = 0; i < list.length; ++i) {
+        outputString += list[i]["round"] + "," + list[i]["signal"] + "," + list[i]["signalTime"] + "," + list[i]["userChoice"] + "," + list[i]["decisionTimePlayer"] + "," + list[i]["agentChoice"] + "\n";
+    }
+    return outputString;
+}
+
+function setDownloadLink() {
+    if (downloadableData != null) {
+        window.URL.revokeObjectURL(downloadableData);
+    }
+    downloadableData = window.URL.createObjectURL(new Blob([generateData(allData)], {type: "text/plain"}));
+    document.getElementById("continueButton").href = downloadableData;
+}
+
+
+</script>
+
+
+    </body>
+</html>
+
